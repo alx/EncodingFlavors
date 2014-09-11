@@ -53,6 +53,27 @@ class EncodingFlavors {
 
       ### Verify video file was created successfully
       if (!file_exists ($file) || filesize ($file) < 1024*5) throw new Exception ("The flavor file was not created. The id of the video is: $video->video_id");
+
+      # Add overlay : http://stackoverflow.com/a/10920872
+      $db = Database::GetInstance();
+      $query = 'SELECT * FROM `'.DB_PREFIX.'encoding_options` WHERE `encoding_id` = ' . $flavor->id . ' AND `name` = "overlay"';
+      $result = $db->Query ($query);
+      $count = $db->Count ($result);
+
+      if($count > 0) {
+
+        $overlay = $db->FetchObj ($result);
+        $overlay_command = $ffmpeg_path . ' -i ' .  $file . ' -i ' . $overlay->value . ' -filter_complex "overlay=main_w/2-overlay_w/2:main_h/2-overlay_h/2" -codec:a copy ' . $file . ' >> ' . $debug_log . '2>&1';
+
+        exec ($overlay_command);
+
+        // Debug Log
+        $config->debug_conversion ? App::Log (CONVERSION_LOG, 'Overlay was applied on flavor video...') : null;
+
+        ### Verify video file was created successfully
+        if (!file_exists ($file) || filesize ($file) < 1024*5) throw new Exception ("Overlay : the flavor file was not created. The id of the video is: $video->video_id");
+
+      }
     }
 
     static function Info() {
